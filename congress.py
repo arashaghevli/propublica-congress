@@ -119,6 +119,11 @@ class MembersClient(Client):
         path = "states/members/party.json"
         return self.fetch(path, parse=lambda r: r['results'])
 
+    def votes(self, member_id):
+        "Returns a list votes by the member"
+        path = "members/{0}/votes.json".format(member_id)
+        return self.fetch(path, parse=lambda r: r['results'][0]['votes'])
+
 
 class BillsClient(Client):
     
@@ -249,6 +254,10 @@ class VotesClient(Client):
         path = "{congress}/nominations.json".format(congress=congress)
         return self.fetch(path)
 
+    def by_member(self, member_id):
+        "Same as MembersClient.votes"
+        path = "members/{0}/votes.json".format(member_id)
+        return self.fetch(path, parse=lambda r: r['results'][0]['votes'])
 
 class CommitteesClient(Client):
     

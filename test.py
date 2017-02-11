@@ -60,6 +60,11 @@ class MemberTest(APITest):
         url = ("https://api.propublica.org/congress/v1/"
               "members/A000069/votes/A000360/111/senate.json?api-key=%s" % API_KEY)
         self.check_response(comparison, url)
+
+    def test_votes(self):
+        votes = self.congress.members.votes('P000197')
+        url = "https://api.propublica.org/congress/v1/members/P000197/votes.json"
+        self.check_response(votes, url, lambda r: r['results'][0]['votes'])
         
 
 class BillTest(APITest):
@@ -233,7 +238,11 @@ class VoteTest(APITest):
         url = ("https://api.propublica.org/congress/v1/"
                "111/house/votes/perfect.json?api-key=%s" % API_KEY)
         self.check_response(perfects, url)
-            
+
+    def test_by_member(self):
+        votes = self.congress.votes.by_member('P000197')
+        url = "https://api.propublica.org/congress/v1/members/P000197/votes.json"
+        self.check_response(votes, url, lambda r: r['results'][0]['votes'])    
     
 class ClientTest(APITest):
 
