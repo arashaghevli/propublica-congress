@@ -55,13 +55,13 @@ class NotFound(CongressError):
 # Clients
 
 class Client(object):
-    
+
     BASE_URI = "https://api.propublica.org/congress/v1/"
-    
+
     def __init__(self, apikey=None, cache='.cache'):
         self.apikey = apikey
         self.http = httplib2.Http(cache)
-    
+
     def fetch(self, path, parse=lambda r: r['results'][0]):
         """
         Make an API request, with authentication
@@ -79,32 +79,32 @@ class Client(object):
 
 
 class MembersClient(Client):
-    
+
     def get(self, member_id):
         "Takes a bioguide_id, returns a legislator"
         path = "members/{0}.json".format(member_id)
         return self.fetch(path)
-    
+
     def filter(self, chamber, congress=CURRENT_CONGRESS, **kwargs):
         "Takes a chamber, Congress, and optional state and district, returning a list of members"
         path = "{0}/{1}/members.json".format(congress, chamber)
         return self.fetch(path)
-    
+
     def bills(self, member_id, type='introduced'):
         "Same as BillsClient.by_member"
         path = "members/{0}/bills/{1}.json".format(member_id, type)
         return self.fetch(path)
-    
+
     def new(self, **kwargs):
         "Returns a list of new members"
         path = "members/new.json"
         return self.fetch(path)
-    
+
     def departing(self, chamber, congress=CURRENT_CONGRESS):
         "Takes a chamber and congress and returns a list of departing members"
         path = "{0}/{1}/members/leaving.json".format(congress, chamber)
         return self.fetch(path)
-    
+
     def compare(self, first, second, chamber, congress=CURRENT_CONGRESS):
         """
         See how often two members voted together in a given Congress.
@@ -119,17 +119,22 @@ class MembersClient(Client):
         path = "states/members/party.json"
         return self.fetch(path, parse=lambda r: r['results'])
 
+    def votes(self, member_id):
+        "Returns a list votes by the member"
+        path = "members/{0}/votes.json".format(member_id)
+        return self.fetch(path, parse=lambda r: r['results'][0]['votes'])
+
 
 class BillsClient(Client):
-    
+
     def by_member(self, member_id, type='introduced'):
         """
-        Takes a bioguide ID and a type (introduced|updated|cosponsored|withdrawn), 
+        Takes a bioguide ID and a type (introduced|updated|cosponsored|withdrawn),
         returns recent bills
         """
         path = "members/{member_id}/bills/{type}.json".format(member_id=member_id, type=type)
         return self.fetch(path)
-    
+
     def get(self, bill_id, congress=CURRENT_CONGRESS, type=None):
         if type:
             path = "{congress}/bills/{bill_id}/{type}.json".format(
@@ -138,29 +143,29 @@ class BillsClient(Client):
             path = "{congress}/bills/{bill_id}.json".format(
                 congress=congress, bill_id=bill_id)
         return self.fetch(path)
-    
+
     def amendments(self, bill_id, congress=CURRENT_CONGRESS):
         return self.get(bill_id, congress, 'amendments')
 
     def related(self, bill_id, congress=CURRENT_CONGRESS):
         return self.get(bill_id, congress, 'related')
-    
+
     def subjects(self, bill_id, congress=CURRENT_CONGRESS):
         return self.get(bill_id, congress, 'subjects')
-    
+
     def cosponsors(self, bill_id, congress=CURRENT_CONGRESS):
         return self.get(bill_id, congress, 'cosponsors')
-    
+
     def recent(self, chamber, congress=CURRENT_CONGRESS, type='introduced'):
         "Takes a chamber, Congress, and type (introduced|updated), returns a list of recent bills"
         path = "{congress}/{chamber}/bills/{type}.json".format(
             congress=congress, chamber=chamber, type=type)
         return self.fetch(path)
-    
+
     def introduced(self, chamber, congress=CURRENT_CONGRESS):
         "Shortcut for getting introduced bills"
         return self.recent(chamber, congress, 'introduced')
-    
+
     def updated(self, chamber, congress=CURRENT_CONGRESS):
         "Shortcut for getting updated bills"
         return self.recent(chamber, congress, 'updated')
@@ -175,7 +180,7 @@ class BillsClient(Client):
 
 
 class VotesClient(Client):
-    
+
     # date-based queries
     def by_month(self, chamber, year=None, month=None):
         """
@@ -185,11 +190,11 @@ class VotesClient(Client):
         now = datetime.datetime.now()
         year = year or now.year
         month = month or now.month
-        
+
         path = "{chamber}/votes/{year}/{month}.json".format(
             chamber=chamber, year=year, month=month)
         return self.fetch(path)
-    
+
     def by_range(self, chamber, start, end):
         """
         Return votes cast in a chamber between two dates,
@@ -202,61 +207,66 @@ class VotesClient(Client):
         path = "{chamber}/votes/{start:%Y-%m-%d}/{end:%Y-%m-%d}.json".format(
             chamber=chamber, start=start, end=end)
         return self.fetch(path)
-    
+
     def by_date(self, chamber, date):
         "Return votes cast in a chamber on a single day"
         date = parse_date(date)
         return self.by_range(chamber, date, date)
-    
+
     def today(self, chamber):
         "Return today's votes in a given chamber"
         now = datetime.date.today()
         return self.by_range(chamber, now, now)
-    
+
     # detail response
     def get(self, chamber, rollcall_num, session, congress=CURRENT_CONGRESS):
         "Return a specific roll-call vote, including a complete list of member positions"
         path = "{congress}/{chamber}/sessions/{session}/votes/{rollcall_num}.json"
-        path = path.format(congress=congress, chamber=chamber, 
+        path = path.format(congress=congress, chamber=chamber,
             session=session, rollcall_num=rollcall_num)
         return self.fetch(path)
-    
+
     # votes by type
     def by_type(self, chamber, type, congress=CURRENT_CONGRESS):
         "Return votes by type: missed, party, lone no, perfect"
         path = "{congress}/{chamber}/votes/{type}.json".format(
             congress=congress, chamber=chamber, type=type)
         return self.fetch(path)
-    
+
     def missed(self, chamber, congress=CURRENT_CONGRESS):
         "Missed votes by member"
         return self.by_type(chamber, 'missed', congress)
-    
+
     def party(self, chamber, congress=CURRENT_CONGRESS):
         "How often does each member vote with their party?"
         return self.by_type(chamber, 'party', congress)
-    
+
     def loneno(self, chamber, congress=CURRENT_CONGRESS):
         "How often is each member the lone no vote?"
         return self.by_type(chamber, 'loneno', congress)
-    
+
     def perfect(self, chamber, congress=CURRENT_CONGRESS):
         "Who never misses a vote?"
         return self.by_type(chamber, 'perfect', congress)
-    
+
     def nominations(self, congress=CURRENT_CONGRESS):
         "Return votes on nominations from a given Congress"
         path = "{congress}/nominations.json".format(congress=congress)
         return self.fetch(path)
 
+    def by_member(self, member_id):
+        "Same as MembersClient.votes"
+        path = "members/{0}/votes.json".format(member_id)
+        return self.fetch(path, parse=lambda r: r['results'][0]['votes'])
+
 
 class CommitteesClient(Client):
-    
+
     def filter(self, chamber, congress=CURRENT_CONGRESS):
         path = "{congress}/{chamber}/committees.json".format(
             congress=congress, chamber=chamber)
         return self.fetch(path)
-    
+
     def get(self, chamber, committee, congress=CURRENT_CONGRESS):
         path = "{congress}/{chamber}/committees/{committee}.json".format(
             congress=congress, chamber=chamber, committee=committee)
@@ -264,15 +274,15 @@ class CommitteesClient(Client):
 
 
 class NominationsClient(Client):
-    
+
     def filter(self, type, congress=CURRENT_CONGRESS):
         path = "{congress}/nominees/{type}.json".format(congress=congress, type=type)
         return self.fetch(path)
-    
+
     def get(self, nominee, congress=CURRENT_CONGRESS):
         path = "{congress}/nominees/{nominee}.json".format(congress=congress, nominee=nominee)
         return self.fetch(path)
-    
+
     def by_state(self, state, congress=CURRENT_CONGRESS):
         path = "{congress}/nominees/state/{state}.json".format(
             congress=congress, state=state)
@@ -282,24 +292,24 @@ class NominationsClient(Client):
 class Congress(Client):
     """
     Implements the public interface for the NYT Congress API
-    
+
     Methods are namespaced by topic (though some have multiple access points).
     Everything returns decoded JSON, with fat trimmed.
-    
+
     In addition, the top-level namespace is itself a client, which
     can be used to fetch generic resources, using the API URIs included
     in responses. This is here so you don't have to write separate
     functions that add on your API key and trim fat off responses.
-    
+
     Create a new instance with your API key, or set an environment
     variable called NYT_CONGRESS_API_KEY.
-    
+
     Congress uses httplib2, and caching is pluggable. By default,
     it uses httplib2.FileCache, in a directory called .cache, but it
     should also work with memcache or anything else that exposes the
     same interface as FileCache (per httplib2 docs).
     """
-    
+
     def __init__(self, apikey=os.environ.get('PROPUBLICA_API_KEY'), cache='.cache'):
         super(Congress, self).__init__(apikey, cache)
         self.members = MembersClient(self.apikey, cache)
@@ -307,5 +317,3 @@ class Congress(Client):
         self.committees = CommitteesClient(self.apikey, cache)
         self.votes = VotesClient(self.apikey, cache)
         self.nominations = NominationsClient(self.apikey, cache)
-
-
