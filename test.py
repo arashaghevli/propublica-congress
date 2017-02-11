@@ -64,8 +64,7 @@ class MemberTest(APITest):
     def test_votes(self):
         votes = self.congress.members.votes('P000197')
         url = "https://api.propublica.org/congress/v1/members/P000197/votes.json"
-        self.check_response(votes, url, lambda r: r['results'][0]['votes'])
-        
+        self.check_response(votes, url, lambda r: r['results'][0]['votes'])      
 
 class BillTest(APITest):
     
